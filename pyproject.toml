@@ -6,11 +6,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "vivarium-vcornea"
 version = "0.1.0"
-authors =
+authors = [{name = "Joel Vanin", email = "jvanin@iu.edu"}]
 description = "A Vivarium wrapper for the vCornea CompuCell3D model."
 readme = "README.md"
 requires-python = ">=3.9"
-classifiers =
+
 
 dependencies = [
     "vivarium-core",
