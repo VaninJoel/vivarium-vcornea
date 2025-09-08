@@ -1,4 +1,0 @@
-# Requirements for the vivarium-vcornea wrapper library
-vivarium-core
-pandas
-fastparquet
