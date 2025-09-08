@@ -27,7 +27,7 @@ conda create --name my_vivarium_project python=3.9
 conda activate my_vivarium_project
 
 # Install the wrapper from GitHub (or PyPI if you publish it)
-pip install git+https://github.com/YourUsername/vivarium-vcornea.git
+pip install git+https://github.com/VaninJoel/vivarium-vcornea.git
 ```
 Usage
 To use the VCorneaProcess in your own experiment, you must provide the full paths to the vCornea simulation and its Python executable. This ensures the wrapper can find and run the simulation correctly.
