@@ -24,4 +24,3 @@ Issues = "https://github.com/YourUsername/vivarium-vcornea/issues"
 
 [tool.setuptools.packages.find]
 include = ["vivarium_vcornea*"]
-exclude = ["experiments*"]
