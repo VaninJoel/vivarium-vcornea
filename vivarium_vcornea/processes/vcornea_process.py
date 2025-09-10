@@ -22,7 +22,8 @@ class VCorneaProcess(Process):
     """
 
     defaults = {
-        'cc3d_project_path': None, # '[path to your vCornea clone parent folder]/vCornea/HPC/Project/paper_version'
+        'cc3d_project_path': Path(r'C:\Users\joelv\OneDrive\Desktop\vCornea_suite\vCornea\HPC\Project\paper_version'),  # Use raw string, '[path to your vCornea clone parent folder]/vCornea/HPC/Project/paper_version'
+        'conda_executable_path': os.environ.get('CONDA_EXE', 'conda'),  # Path to conda executable if not in PATH
         'conda_env_name': 'vc',  # Name of conda environment with CC3D 'v_cornea'
         'python_executable': 'python',  # Usually just 'python' when using conda
         'output_base_dir': None,  # If None, creates temp outputs; otherwise uses this directory
@@ -823,13 +824,13 @@ class VCorneaProcess(Process):
 
     def _classify_change(self, current, default):
         """Classify the type of parameter change."""
-        if isinstance(current, (int, float)) and isinstance(default, (int, float)):
+        if isinstance(current, bool) and isinstance(default, bool):
+            return 'toggled'  # Fix: Handle booleans first
+        elif isinstance(current, (int, float)) and isinstance(default, (int, float)):
             if current > default:
                 return 'increased'
             else:
                 return 'decreased'
-        elif isinstance(current, bool) and isinstance(default, bool):
-            return 'toggled'
         else:
             return 'modified'
 
@@ -985,10 +986,12 @@ class VCorneaProcess(Process):
         # Read the original steppables file
         with open(steppables_file, 'r') as f:
             content = f.read()
-        
-        # Replace the output directory line
-        old_line = 'output_directory = current_script_directory.joinpath("Output",time.strftime("%m%d%Y_%H%M%S"))'
-        new_line = f'output_directory = Path("{str(external_output_dir)}")'
+
+        safe_path = str(external_output_dir).replace('\\', '/')
+
+        # Replace the output directory line - use forward slashes
+        old_line = r'output_directory = current_script_directory\.joinpath\("Output",time.strftime("%m%d%Y_%H%M%S"))'
+        new_line = f'output_directory = Path(r"{safe_path}")'
         
         if old_line in content:
             content = content.replace(old_line, new_line)
@@ -996,7 +999,7 @@ class VCorneaProcess(Process):
             # If the exact line isn't found, try a more flexible approach
             import re
             pattern = r'output_directory = current_script_directory\.joinpath\("Output".*?\)'
-            replacement = f'output_directory = Path("{str(external_output_dir)}")'
+            replacement = f'output_directory = Path(r"{safe_path}")'  # Now using safe_path with forward slashes
             content = re.sub(pattern, replacement, content)
         
         # Also ensure Path is imported
@@ -1027,10 +1030,11 @@ class VCorneaProcess(Process):
         conda_env = self.parameters['conda_env_name']
         conda_exe = self.parameters.get('conda_executable_path', 'conda') # Use .get for safety
         
+        import os
         command = [
             conda_exe, 'run', '-n', conda_env,
             'python', '-m', 'cc3d.run_script',
-            '-i', str(cc3d_file)
+            '-i', os.fspath(cc3d_file)
         ]
         
         print(f"VCorneaProcess: Launching command: {' '.join(command)}")
@@ -1047,7 +1051,7 @@ class VCorneaProcess(Process):
             # ---- Use Popen to run the command in the background ----
             process = subprocess.Popen(
                 command,
-                cwd=str(project_path),
+                cwd=os.fspath(project_path),
                 stdout=stdout_log,
                 stderr=stderr_log,
                 text=True

@@ -16,6 +16,7 @@ dependencies = [
     "vivarium-core",
     "pandas",
     "fastparquet",
+    "pytest",
 ]
 
 [project.urls]
