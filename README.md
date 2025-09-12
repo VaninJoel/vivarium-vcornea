@@ -61,10 +61,10 @@ config = create_vcornea_config(
     conda_env_name="my_cc3d_env"
 )
 
-# Create your process (your existing code)
+# Create your process 
 process = VCorneaProcess(config)
 
-# Create experiment state (helper for the dictionary format)
+# Create experiment state 
 sim_params = {
     'SimTime': 1000,
     'IsInjury': True, 
@@ -72,7 +72,7 @@ sim_params = {
 }
 initial_state = create_vivarium_experiment_state(sim_params)
 
-# Run experiment (your existing Vivarium code)
+# Run experiment 
 engine = Engine(
     processes={'vcornea': process},
     topology={'vcornea': {'inputs': ('inputs',), 'outputs': ('outputs',)}}, 
