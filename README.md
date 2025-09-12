@@ -49,3 +49,35 @@ composer_config = {
 }
 #... rest of your experiment setup...
 ```
+## Usage examples
+```Python
+from vivarium_vcornea.utils.simple_config import create_vcornea_config, create_vivarium_experiment_state
+from vivarium_vcornea.processes.vcornea_process import VCorneaProcess
+from vivarium.core.engine import Engine
+
+# Create configuration (replaces hardcoded paths)
+config = create_vcornea_config(
+    vcornea_project_path="/path/to/vcornea/project",
+    conda_env_name="my_cc3d_env"
+)
+
+# Create your process (your existing code)
+process = VCorneaProcess(config)
+
+# Create experiment state (helper for the dictionary format)
+sim_params = {
+    'SimTime': 1000,
+    'IsInjury': True, 
+    'SLS_Concentration': 1500.0
+}
+initial_state = create_vivarium_experiment_state(sim_params)
+
+# Run experiment (your existing Vivarium code)
+engine = Engine(
+    processes={'vcornea': process},
+    topology={'vcornea': {'inputs': ('inputs',), 'outputs': ('outputs',)}}, 
+    initial_state=initial_state
+)
+
+results = engine.update(1.0)
+```
