@@ -22,12 +22,13 @@ class VCorneaProcess(Process):
     """
 
     defaults = {
-        'cc3d_project_path': Path(r'C:\Users\joelv\OneDrive\Desktop\vCornea_suite\vCornea\HPC\Project\paper_version'),  # Use raw string, '[path to your vCornea clone parent folder]/vCornea/HPC/Project/paper_version'
+        'cc3d_project_path': None,  # Path to the CC3D project directory
+        
         'conda_executable_path': os.environ.get('CONDA_EXE', 'conda'),  # Path to conda executable if not in PATH
-        'conda_env_name': 'vc',  # Name of conda environment with CC3D 'v_cornea'
+        'conda_env_name': 'v_cornea',  # Name of conda environment with CC3D 'v_cornea'
         'python_executable': 'python',  # Usually just 'python' when using conda
-        'output_base_dir': None,  # If None, creates temp outputs; otherwise uses this directory
-        'keep_outputs': False,  # If True, preserves outputs after simulation
+        
+        'output_base_dir': None, #Path.cwd()/ "simulation_results",  # Permanent location        
         'run_name': None,  # Custom name for this run; if None, generates descriptive name
         'max_params_in_name': 3,  # Max number of changed parameters to include in auto-generated names
         'replicates': 1,  # Number of times to run the simulation with the same parameters
@@ -37,6 +38,14 @@ class VCorneaProcess(Process):
         super().__init__(parameters)
 
         # Validate that the project path exists and has the required files
+        if not self.parameters.get('cc3d_project_path'):
+            raise ValueError(
+                "cc3d_project_path parameter is required. Use:\n"
+                "from vivarium_vcornea.utils.simple_config import create_vcornea_config\n"
+                "config = create_vcornea_config('/path/to/vcornea', 'conda_env_name')\n"
+                "process = VCorneaProcess(config)"
+            )
+
         project_path = Path(self.parameters['cc3d_project_path'])
         if not project_path:
             # Check environment variable
@@ -50,9 +59,8 @@ class VCorneaProcess(Process):
                     "1. Set VCORNEA_PROJECT_PATH environment variable, or\n"
                     "2. Pass 'cc3d_project_path' parameter\n"
                     "Example: export VCORNEA_PROJECT_PATH=/path/to/vCornea/Local/Project/paper_version"
-                )
+                )        
         
-        # Validate that the project path exists and has required files
         self.project_path = Path(project_path)
         
         if not self.project_path.exists():
@@ -78,416 +86,1415 @@ class VCorneaProcess(Process):
         return {
             'inputs': {
                 # --- STEM Cell Parameters ---
+                # 'InitSTEM_LambdaSurface': {
+                #     '_default': 2.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitSTEM_LambdaSurface': {
                     '_default': 2.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Stem Surface Regulation',
+                    '_description': 'How strongly a stem cell regulates its surface area towards a desired size',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Stem Cells',
+                    # '_units': 'force/area',
+                    '_biological_range': (0.1, 10.0),
+                    '_expert_level': 'advanced',
+                    '_hidden_basic': True,
                 },
+                # 'InitSTEM_TargetSurface': {
+                #     '_default': 18.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitSTEM_TargetSurface': {
                     '_default': 18.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Stem Target Surface Area',
+                    '_description': 'The ideal surface area each stem cell tries to maintain',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Stem Cells',
+                    # '_units': 'pixels²',
+                    '_biological_range': (10.0, 30.0),
+                    '_expert_level': 'intermediate',
                 },
+                # 'InitSTEM_LambdaVolume': {
+                #     '_default': 2.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitSTEM_LambdaVolume': {
                     '_default': 2.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Stem Volume Regulation',
+                    '_description': 'How strongly a stem cell regulates its volume towards a desired size',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Stem Cells',
+                    # '_units': 'force/volume',
+                    '_biological_range': (0.1, 10.0),
+                    '_expert_level': 'advanced',
+                    '_hidden_basic': True,
                 },
+                # 'InitSTEM_TargetVolume': {
+                #     '_default': 25.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitSTEM_TargetVolume': {
                     '_default': 25.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Stem Target Volume',
+                    '_description': 'The ideal volume each stem cell tries to maintain',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Stem Cells',
+                    # '_units': 'pixels²',
+                    '_biological_range': (15.0, 40.0),
+                    '_expert_level': 'intermediate',
                 },
+                # 'DensitySTEM_HalfMaxValue': {
+                #     '_default': 125,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'DensitySTEM_HalfMaxValue': {
                     '_default': 125,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Stem Density Sensitivity',
+                    '_description': 'Cell density at which stem cells achieve half their maximum growth response',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Stem Cells',
+                    # '_units': 'pressure units',
+                    '_biological_range': (50, 300),
+                    '_expert_level': 'intermediate',
                 },
+                # 'EGF_STEM_HalfMaxValue': {
+                #     '_default': 3.5,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'EGF_STEM_HalfMaxValue': {
                     '_default': 3.5,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Stem EGF Sensitivity',
+                    '_description': 'EGF concentration at which stem cells achieve half their maximum growth response',
+                    '_category': 'Growth Factors',
+                    '_subcategory': 'EGF Response',
+                    # '_units': 'ng/mL equivalent',
+                    '_biological_range': (1.0, 10.0),
+                    '_expert_level': 'basic',
+                    '_related_parameters': ['EGF_BASAL_HalfMaxValue'],
                 },
+                # 'STEM_beta_EGF': {
+                #     '_default': 1,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'STEM_beta_EGF': {
                     '_default': 1,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Stem EGF Dependence',
+                    '_description': 'How much stem cell behavior depends on EGF levels (0=independent, 1=fully dependent)',
+                    '_category': 'Growth Factors',
+                    '_subcategory': 'EGF Response',
+                    # '_units': 'fraction (0-1)',
+                    '_biological_range': (0.0, 1.0),
+                    '_expert_level': 'intermediate',
                 },
+                # 'InitSTEM_LambdaChemo': {
+                #     '_default': 100.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitSTEM_LambdaChemo': {
                     '_default': 100.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Stem Movement Response',
+                    '_description': 'How strongly stem cells move toward areas with guidance signals',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Stem Cells',
+                    # '_units': 'force/gradient',
+                    '_biological_range': (10.0, 1000.0),
+                    '_expert_level': 'advanced',
                 },
 
                 # --- BASAL Cell Parameters ---
+                # 'InitBASAL_LambdaSurface': {
+                #     '_default': 2.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitBASAL_LambdaSurface': {
                     '_default': 2.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Basal Surface Regulation',
+                    '_description': 'How strongly a basal cell regulates its surface area towards a desired size',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Basal Cells',
+                    # '_units': 'force/area',
+                    '_biological_range': (0.1, 10.0),
+                    '_expert_level': 'advanced',
+                    '_hidden_basic': True,
                 },
+                # 'InitBASAL_TargetSurface': {
+                #     '_default': 20.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitBASAL_TargetSurface': {
                     '_default': 20.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Basal Target Surface Area',
+                    '_description': 'The ideal surface area each basal cell tries to maintain',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Basal Cells',
+                    # '_units': 'pixels²',
+                    '_biological_range': (10.0, 35.0),
+                    '_expert_level': 'intermediate',
                 },
+                # 'InitBASAL_LambdaVolume': {
+                #     '_default': 2.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitBASAL_LambdaVolume': {
                     '_default': 2.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Basal Volume Regulation',
+                    '_description': 'How strongly a basal cell regulates its volume towards a desired size',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Basal Cells',
+                    # '_units': 'force/volume',
+                    '_biological_range': (0.1, 10.0),
+                    '_expert_level': 'advanced',
+                    '_hidden_basic': True,
                 },
+                # 'InitBASAL_TargetVolume': {
+                #     '_default': 25.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitBASAL_TargetVolume': {
                     '_default': 25.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Basal Target Volume',
+                    '_description': 'The ideal volume each basal cell tries to maintain',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Basal Cells',
+                    # '_units': 'pixels³',
+                    '_biological_range': (15.0, 40.0),
+                    '_expert_level': 'intermediate',
                 },
+                # 'InitBASAL_LambdaChemo': {
+                #     '_default': 1000.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitBASAL_LambdaChemo': {
                     '_default': 1000.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Basal Movement Response',
+                    '_description': 'How strongly basal cells move toward areas with guidance signals',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Basal Cells',
+                    # '_units': 'force/gradient',
+                    '_biological_range': (100.0, 5000.0),
+                    '_expert_level': 'advanced',
                 },
+                # 'InitBASAL_Division': {
+                #     '_default': 20000.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitBASAL_Division': {
                     '_default': 20000.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Basal Division Capacity',
+                    '_description': 'Maximum number of times a basal cell can divide before exhaustion',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Basal Cells',
+                    # '_units': 'division cycles',
+                    '_biological_range': (5000.0, 50000.0),
+                    '_expert_level': 'advanced',
                 },
+                # 'DensityBASAL_HalfMaxValue': {
+                #     '_default': 125,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'DensityBASAL_HalfMaxValue': {
                     '_default': 125,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Basal Density Sensitivity',
+                    '_description': 'Cell density at which basal cells achieve half their maximum growth response',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Basal Cells',
+                    # '_units': 'pressure units',
+                    '_biological_range': (50, 300),
+                    '_expert_level': 'intermediate',
                 },
+                # 'EGF_BASAL_HalfMaxValue': {
+                #     '_default': 7.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'EGF_BASAL_HalfMaxValue': {
                     '_default': 7.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Basal EGF Sensitivity',
+                    '_description': 'EGF concentration at which basal cells achieve half their maximum growth response',
+                    '_category': 'Growth Factors',
+                    '_subcategory': 'EGF Response',
+                    # '_units': 'ng/mL equivalent',
+                    '_biological_range': (3.0, 15.0),
+                    '_expert_level': 'basic',
+                    '_related_parameters': ['EGF_STEM_HalfMaxValue', 'EGF_SecreteAmount',
+                                             'EGF_FieldUptakeBASAL', 'EGF_GlobalDecay', 'EGF_FieldUptakeSTEM',
+                                             'EGF_FieldUptakeSuper', 'EGF_FieldUptakeWing', 'EGF_SUPERDiffCoef'],
                 },
+                # 'BASAL_beta_EGF': {
+                #     '_default': 1,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'BASAL_beta_EGF': {
                     '_default': 1,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Basal EGF Dependence',
+                    '_description': 'How much basal cell behavior depends on EGF levels',
+                    '_category': 'Growth Factors',
+                    '_subcategory': 'EGF Response',
+                    # '_units': 'fraction (0-1)',
+                    '_biological_range': (0.0, 1.0),
+                    '_expert_level': 'intermediate',
                 },
 
                 # --- WING Cell Parameters ---
+                # 'InitWING_LambdaSurface': {
+                #     '_default': 5.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitWING_LambdaSurface': {
                     '_default': 5.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Wing Surface Regulation',
+                    '_description': 'How strongly a wing cell regulates its surface area towards a desired size',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Wing Cells',
+                    # '_units': 'force/area',
+                    '_biological_range': (1.0, 20.0),
+                    '_expert_level': 'advanced',
+                    '_hidden_basic': True,
                 },
+                # 'InitWING_TargetSurface': {
+                #     '_default': 25,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitWING_TargetSurface': {
                     '_default': 25,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Wing Target Surface Area',
+                    '_description': 'The ideal surface area each wing cell tries to maintain',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Wing Cells',
+                    # '_units': 'pixels²',
+                    '_biological_range': (15.0, 40.0),
+                    '_expert_level': 'intermediate',
                 },
+                # 'InitWING_LambdaVolume': {
+                #     '_default': 2.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitWING_LambdaVolume': {
                     '_default': 2.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Wing Volume Regulation',
+                    '_description': 'How strongly a wing cell regulates its volume towards a desired size',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Wing Cells',
+                    # '_units': 'force/volume',
+                    '_biological_range': (0.1, 10.0),
+                    '_expert_level': 'advanced',
+                    '_hidden_basic': True,
                 },
+                # 'InitWING_TargetVolume': {
+                #     '_default': 25.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitWING_TargetVolume': {
                     '_default': 25.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Wing Target Volume',
+                    '_description': 'The ideal volume each wing cell tries to maintain',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Wing Cells',
+                    # '_units': 'pixels²',
+                    '_biological_range': (15.0, 40.0),
+                    '_expert_level': 'intermediate',
                 },
+                # 'InitWING_EGFLambdaChemo': {
+                #     '_default': 20.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitWING_EGFLambdaChemo': {
                     '_default': 20.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Wing EGF Movement Response',
+                    '_description': 'How strongly wing cells move toward regions with higher EGF concentration',
+                    '_category': 'Growth Factors',
+                    '_subcategory': 'EGF Response',
+                    # '_units': 'force/gradient',
+                    '_biological_range': (5.0, 100.0),
+                    '_expert_level': 'intermediate',
                 },
-
                 # --- SUPERFICIAL Cell Parameters ---
+                # 'InitSUPER_LambdaSurface': {
+                #     '_default': 5.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitSUPER_LambdaSurface': {
                     '_default': 5.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Superficial Surface Regulation',
+                    '_description': 'How strongly a superficial cell regulates its surface area towards a desired size',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Superficial Cells',
+                    # '_units': 'force/area',
+                    '_biological_range': (1.0, 20.0),
+                    '_expert_level': 'advanced',
+                    '_hidden_basic': True,
                 },
+                # 'InitSUPER_TargetSurface': {
+                #     '_default': 25.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitSUPER_TargetSurface': {
                     '_default': 25.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Superficial Target Surface Area',
+                    '_description': 'The ideal surface area each superficial cell tries to maintain',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Superficial Cells',
+                    # '_units': 'pixels²',
+                    '_biological_range': (15.0, 40.0),
+                    '_expert_level': 'intermediate',
                 },
+                # 'InitSUPER_LambdaVolume': {
+                #     '_default': 5.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitSUPER_LambdaVolume': {
                     '_default': 5.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Superficial Volume Regulation',
+                    '_description': 'How strongly a superficial cell regulates its volume towards a desired size',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Superficial Cells',
+                    # '_units': 'force/volume',
+                    '_biological_range': (1.0, 20.0),
+                    '_expert_level': 'advanced',
+                    '_hidden_basic': True,
                 },
+                # 'InitSUPER_TargetVolume': {
+                #     '_default': 25.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InitSUPER_TargetVolume': {
                     '_default': 25.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Superficial Target Volume',
+                    '_description': 'The ideal volume each superficial cell tries to maintain',
+                    '_category': 'Cell Properties',
+                    '_subcategory': 'Superficial Cells',
+                    # '_units': 'pixels³',
+                    '_biological_range': (15.0, 40.0),
+                    '_expert_level': 'intermediate',
                 },
+                # 'EGF_SUPERDiffCoef': {
+                #     '_default': 20.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'EGF_SUPERDiffCoef': {
                     '_default': 20.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Superficial EGF Diffusion',
+                    '_description': 'How quickly EGF diffuses (spreads) through superficial cells',
+                    '_category': 'Growth Factors',
+                    '_subcategory': 'EGF Dynamics',
+                    # '_units': 'diffusion rate',
+                    '_biological_range': (5.0, 100.0),
+                    '_expert_level': 'intermediate',
                 },
-
                 # --- Movement Bias Field Parameters ---
+                # 'MovementBiasScreteAmount': {
+                #     '_default': 1,  # Corrected from 5.0 to match vCornea default
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'MovementBiasScreteAmount': {
-                    '_default': 1,  # Corrected from 5.0 to match vCornea default
+                    '_default': 1,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Guidance Signal Strength',
+                    '_description': 'Amount of guidance signal secreted by boundary structures to direct cell movement',
+                    '_category': 'Tissue Guidance',
+                    '_subcategory': 'Movement Signals',
+                    # '_units': 'signal strength',
+                    '_biological_range': (0.1, 10.0),
+                    '_expert_level': 'intermediate',
                 },
+                # 'MovementBiasUptake': {
+                #     '_default': 1.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'MovementBiasUptake': {
                     '_default': 1.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Guidance Signal Uptake',
+                    '_description': 'How quickly basal cells absorb guidance signals from their environment',
+                    '_category': 'Tissue Guidance',
+                    '_subcategory': 'Movement Signals',
+                    # '_units': 'uptake rate',
+                    '_biological_range': (0.1, 10.0),
+                    '_expert_level': 'advanced',
                 },
-
                 # --- EGF Field Parameters ---
+                # 'EGF_ScreteAmount': {
+                #     '_default': 1.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'EGF_ScreteAmount': {
                     '_default': 1.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'EGF Production Rate',
+                    '_description': 'Amount of EGF continuously produced (e.g., from tear fluid)',
+                    '_category': 'Growth Factors',
+                    '_subcategory': 'EGF Production',
+                    # '_units': 'ng/mL/hour equivalent',
+                    '_biological_range': (0.1, 10.0),
+                    '_expert_level': 'intermediate',
                 },
+                # 'EGF_FieldUptakeBASAL': {
+                #     '_default': 0.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'EGF_FieldUptakeBASAL': {
                     '_default': 0.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Basal EGF Consumption',
+                    '_description': 'How quickly basal cells consume EGF from their surroundings',
+                    '_category': 'Growth Factors',
+                    '_subcategory': 'EGF Consumption',
+                    # '_units': 'consumption rate',
+                    '_biological_range': (0.0, 5.0),
+                    '_expert_level': 'advanced',
                 },
+                # 'EGF_FieldUptakeSTEM': {
+                #     '_default': 0.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'EGF_FieldUptakeSTEM': {
                     '_default': 0.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Stem EGF Consumption',
+                    '_description': 'How quickly stem cells consume EGF from their surroundings',
+                    '_category': 'Growth Factors',
+                    '_subcategory': 'EGF Consumption',
+                    # '_units': 'consumption rate',
+                    '_biological_range': (0.0, 5.0),
+                    '_expert_level': 'advanced',
                 },
+                # 'EGF_FieldUptakeSuper': {
+                #     '_default': 0.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'EGF_FieldUptakeSuper': {
                     '_default': 0.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Superficial EGF Consumption',
+                    '_description': 'How quickly superficial cells consume EGF',
+                    '_category': 'Growth Factors',
+                    '_subcategory': 'EGF Consumption',
+                    # '_units': 'consumption rate',
+                    '_biological_range': (0.0, 5.0),
+                    '_expert_level': 'advanced',
                 },
+                # 'EGF_FieldUptakeWing': {
+                #     '_default': 0.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'EGF_FieldUptakeWing': {
                     '_default': 0.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Wing EGF Consumption',
+                    '_description': 'How quickly wing cells consume EGF',
+                    '_category': 'Growth Factors',
+                    '_subcategory': 'EGF Consumption',
+                    # '_units': 'consumption rate',
+                    '_biological_range': (0.0, 5.0),
+                    '_expert_level': 'advanced',
                 },
+                # 'EGF_GlobalDecay': {
+                #     '_default': 0.5,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'EGF_GlobalDecay': {
                     '_default': 0.5,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'EGF Natural Decay',
+                    '_description': 'Rate at which EGF naturally breaks down over time',
+                    '_category': 'Growth Factors',
+                    '_subcategory': 'EGF Dynamics',
+                    # '_units': '1/hour equivalent',
+                    '_biological_range': (0.1, 2.0),
+                    '_expert_level': 'intermediate',
                 },
 
                 # --- Link Parameters (SUPER-WALL) ---
+                # 'LINKWALL_lambda_distance': {
+                #     '_default': 50,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'LINKWALL_lambda_distance': {
                     '_default': 50,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Boundary Attachment Strength',
+                    '_description': 'How strongly superficial cells try to maintain distance from tissue boundary',
+                    '_category': 'Tissue Mechanics',
+                    '_subcategory': 'Boundary Interactions',
+                    # '_units': 'force constant',
+                    '_biological_range': (10, 200),
+                    '_expert_level': 'advanced',
                 },
+                # 'LINKWALL_target_distance': {
+                #     '_default': 3,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'LINKWALL_target_distance': {
                     '_default': 3,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Boundary Target Distance',
+                    '_description': 'Desired distance between superficial cells and tissue boundary',
+                    '_category': 'Tissue Mechanics',
+                    '_subcategory': 'Boundary Interactions',
+                    # '_units': 'pixels',
+                    '_biological_range': (1, 10),
+                    '_expert_level': 'advanced',
                 },
+                # 'LINKWALL_max_distance': {
+                #     '_default': 1000,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'LINKWALL_max_distance': {
                     '_default': 1000,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Boundary Max Interaction',
+                    '_description': 'Maximum distance at which boundary forces apply to cells',
+                    '_category': 'Tissue Mechanics',
+                    '_subcategory': 'Boundary Interactions',
+                    # '_units': 'pixels',
+                    '_biological_range': (100, 2000),
+                    '_expert_level': 'advanced',
                 },
 
                 # --- Link Parameters (SUPER-SUPER) ---
+                # 'LINKSUPER_lambda_distance': {
+                #     '_default': 50,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'LINKSUPER_lambda_distance': {
                     '_default': 50,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Cell-Cell Adhesion Strength',
+                    '_description': 'How strongly superficial cells stick together',
+                    '_category': 'Tissue Mechanics',
+                    '_subcategory': 'Cell Adhesion',
+                    # '_units': 'force constant',
+                    '_biological_range': (10, 200),
+                    '_expert_level': 'intermediate',
                 },
+                # 'LINKSUPER_target_distance': {
+                #     '_default': 3,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'LINKSUPER_target_distance': {
                     '_default': 3,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Cell-Cell Target Distance',
+                    '_description': 'Preferred distance between adjacent superficial cells',
+                    '_category': 'Tissue Mechanics',
+                    '_subcategory': 'Cell Adhesion',
+                    # '_units': 'pixels',
+                    '_biological_range': (1, 10),
+                    '_expert_level': 'intermediate',
                 },
+                # 'LINKSUPER_max_distance': {
+                #     '_default': 1000,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'LINKSUPER_max_distance': {
                     '_default': 1000,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Cell-Cell Max Interaction',
+                    '_description': 'Maximum distance at which cells can interact with each other',
+                    '_category': 'Tissue Mechanics',
+                    '_subcategory': 'Cell Adhesion',
+                    # '_units': 'pixels',
+                    '_biological_range': (100, 2000),
+                    '_expert_level': 'advanced',
                 },
+                # 'AutoAdjustLinks': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'AutoAdjustLinks': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Dynamic Tissue Tension',
+                    '_description': 'Allow tissue tension to adjust automatically to maintain stability',
+                    '_category': 'Tissue Mechanics',
+                    '_subcategory': 'Adaptive Behavior',
+                    # '_units': 'boolean',
+                    '_expert_level': 'intermediate',
                 },
 
                 # --- Injury Parameters ---
+                # 'IsInjury': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'IsInjury': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Include Injury Event',
+                    '_description': 'Whether to include a tissue injury in the simulation',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Basic Setup',
+                    # '_units': 'boolean',
+                    '_expert_level': 'basic',
+                    '_affects_output': ['healing_time', 'cell_recovery_pattern'],
                 },
+                # 'InjuryType': {
+                #     '_default': False,  # False = ablation, True = chemical
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InjuryType': {
-                    '_default': False,  # False = ablation, True = chemical
+                    '_default': False,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Injury Type',
+                    '_description': 'Type of tissue injury to simulate',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Basic Setup',
+                    # '_units': 'categorical',
+                    '_expert_level': 'basic',
+                    '_value_mapping': {False: 'Mechanical Ablation', True: 'Chemical Exposure'},
+                    '_depends_on': ['IsInjury'],
+                    '_conditional_display': lambda params: params.get('IsInjury', False),
                 },
+                # 'InjuryTime': {
+                #     '_default': 500,  # match vCornea default
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InjuryTime': {
-                    '_default': 500,  # Corrected to match vCornea default
+                    '_default': 500,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Injury Timing',
+                    '_description': 'When during simulation the injury occurs (allows tissue stabilization first)',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Timing',
+                    # '_units': 'hours',
+                    '_conversion_factor': 10,  # MCS to hours
+                    '_biological_range': (24, 720),  # 1 day to 30 days
+                    '_expert_level': 'intermediate',
+                    '_depends_on': ['IsInjury'],
                 },
 
                 # --- Ablation Injury Parameters ---
+                # 'InjuryX_Center': {
+                #     '_default': 100,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InjuryX_Center': {
                     '_default': 100,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Injury X Position',
+                    '_description': 'Horizontal position of the injury center on the tissue',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Mechanical Injury',
+                    # '_units': 'pixels from left edge',
+                    '_biological_range': (20, 180),
+                    '_expert_level': 'intermediate',
+                    '_depends_on': ['IsInjury'],
+                    '_conditional_display': lambda params: params.get('IsInjury', False) and not params.get('InjuryType', False),
                 },
+                # 'InjuryY_Center': {
+                #     '_default': 75,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InjuryY_Center': {
                     '_default': 75,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Injury Y Position',
+                    '_description': 'Vertical position of the injury center on the tissue',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Mechanical Injury',
+                    # '_units': 'pixels from bottom',
+                    '_biological_range': (10, 140),
+                    '_expert_level': 'intermediate',
+                    '_depends_on': ['IsInjury'],
+                    '_conditional_display': lambda params: params.get('IsInjury', False) and not params.get('InjuryType', False),
                 },
+                # 'InjuryRadius': {
+                #     '_default': 45,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'InjuryRadius': {
                     '_default': 45,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Injury Size',
+                    '_description': 'Radius of the circular injury area',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Mechanical Injury',
+                    # '_units': 'pixels',
+                    '_biological_range': (10, 80),
+                    '_expert_level': 'basic',
+                    '_depends_on': ['IsInjury'],
+                    '_conditional_display': lambda params: params.get('IsInjury', False) and not params.get('InjuryType', False),
                 },
 
                 # --- Chemical Injury Parameters ---
+                # 'SLS_Injury': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_Injury': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Enable Chemical Damage',
+                    '_description': 'Whether chemical exposure causes cell death',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Injury',
+                    # '_units': 'boolean',
+                    '_expert_level': 'intermediate',
+                    '_depends_on': ['IsInjury', 'InjuryType'],
+                    '_conditional_display': lambda params: params.get('IsInjury', False) and params.get('InjuryType', False),
                 },
+                # 'SLS_X_Center': {
+                #     '_default': 100,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_X_Center': {
                     '_default': 100,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Chemical X Position',
+                    '_description': 'Horizontal position where chemical is applied',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Injury',
+                    # '_units': 'pixels from left edge',
+                    '_biological_range': (20, 180),
+                    '_expert_level': 'intermediate',
+                    '_depends_on': ['IsInjury', 'InjuryType'],
+                    '_conditional_display': lambda params: params.get('IsInjury', False) and params.get('InjuryType', False),
                 },
+                # 'SLS_Y_Center': {
+                #     '_default': 65,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_Y_Center': {
                     '_default': 65,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Chemical Y Position',
+                    '_description': 'Vertical position where chemical is applied',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Injury',
+                    # '_units': 'pixels from bottom',
+                    '_biological_range': (10, 140),
+                    '_expert_level': 'intermediate',
+                    '_depends_on': ['IsInjury', 'InjuryType'],
+                    '_conditional_display': lambda params: params.get('IsInjury', False) and params.get('InjuryType', False),
                 },
+                # 'SLS_Concentration': {
+                #     '_default': 750.0,  # Corrected to match vCornea default
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_Concentration': {
-                    '_default': 750.0,  # Corrected to match vCornea default
+                    '_default': 750.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Chemical Concentration',
+                    '_description': 'Concentration of chemical irritant (higher = more severe damage)',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Injury',
+                    # '_units': 'µg/mL equivalent',
+                    '_biological_range': (100.0, 5000.0),
+                    '_expert_level': 'basic',
+                    '_severity_mapping': {
+                        (100, 500): 'Mild',
+                        (500, 1500): 'Moderate', 
+                        (1500, 5000): 'Severe'
+                    },
+                    '_depends_on': ['IsInjury', 'InjuryType'],
+                    '_conditional_display': lambda params: params.get('IsInjury', False) and params.get('InjuryType', False),
                 },
+                # 'SLS_Gaussian_pulse': {
+                #     '_default': True,  # Corrected to match vCornea default
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_Gaussian_pulse': {
-                    '_default': True,  # Corrected to match vCornea default
+                    '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Chemical Distribution Pattern',
+                    '_description': 'How chemical spreads: concentrated droplet vs uniform coating',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Injury',
+                    # '_units': 'categorical',
+                    '_expert_level': 'intermediate',
+                    '_value_mapping': {True: 'Concentrated Droplet', False: 'Uniform Coating'},
+                    '_depends_on': ['IsInjury', 'InjuryType'],
+                    '_conditional_display': lambda params: params.get('IsInjury', False) and params.get('InjuryType', False),
                 },
+                # 'SLS_STEMDiffCoef': {
+                #     '_default': 5.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_STEMDiffCoef': {
                     '_default': 5.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Chemical Spread in Stem Cells',
+                    '_description': 'How quickly chemical spreads through stem cells',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Diffusion',
+                    # '_units': 'diffusion rate',
+                    '_biological_range': (1.0, 20.0),
+                    '_expert_level': 'advanced',
+                    '_depends_on': ['SLS_Injury'],
                 },
+                # 'SLS_BASALDiffCoef': {
+                #     '_default': 5.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_BASALDiffCoef': {
                     '_default': 5.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Chemical Spread in Basal Cells',
+                    '_description': 'How quickly chemical spreads through basal cells',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Diffusion',
+                    # '_units': 'diffusion rate',
+                    '_biological_range': (1.0, 20.0),
+                    '_expert_level': 'advanced',
+                    '_depends_on': ['SLS_Injury'],
                 },
+                # 'SLS_WINGDiffCoef': {
+                #     '_default': 5.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_WINGDiffCoef': {
                     '_default': 5.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Chemical Spread in Wing Cells',
+                    '_description': 'How quickly chemical spreads through wing cells',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Diffusion',
+                    # '_units': 'diffusion rate',
+                    '_biological_range': (1.0, 20.0),
+                    '_expert_level': 'advanced',
+                    '_depends_on': ['SLS_Injury'],
                 },
+                # 'SLS_SUPERDiffCoef': {
+                #     '_default': 5.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_SUPERDiffCoef': {
                     '_default': 5.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Chemical Spread in Superficial Cells',
+                    '_description': 'How quickly chemical spreads through superficial cells',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Diffusion',
+                    # '_units': 'diffusion rate',
+                    '_biological_range': (1.0, 20.0),
+                    '_expert_level': 'advanced',
+                    '_depends_on': ['SLS_Injury'],
                 },
+                # 'SLS_MEMBDiffCoef': {
+                #     '_default': 5.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_MEMBDiffCoef': {
                     '_default': 5.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Chemical Spread in Membrane',
+                    '_description': 'How quickly chemical spreads through boundary membrane',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Diffusion',
+                    # '_units': 'diffusion rate',
+                    '_biological_range': (1.0, 20.0),
+                    '_expert_level': 'advanced',
+                    '_depends_on': ['SLS_Injury'],
                 },
+                # 'SLS_LIMBDiffCoef': {
+                #     '_default': 5.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_LIMBDiffCoef': {
                     '_default': 5.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Chemical Spread in Limbal Region',
+                    '_description': 'How quickly chemical spreads through limbal tissue',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Diffusion',
+                    # '_units': 'diffusion rate',
+                    '_biological_range': (1.0, 20.0),
+                    '_expert_level': 'advanced',
+                    '_depends_on': ['SLS_Injury'],
                 },
+                # 'SLS_TEARDiffCoef': {
+                #     '_default': 5.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_TEARDiffCoef': {
                     '_default': 5.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Chemical Spread in Tear Layer',
+                    '_description': 'How quickly chemical spreads through tear film',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Diffusion',
+                    # '_units': 'diffusion rate',
+                    '_biological_range': (1.0, 20.0),
+                    '_expert_level': 'advanced',
+                    '_depends_on': ['SLS_Injury'],
                 },
+                # 'SLS_Threshold_Method': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_Threshold_Method': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Use Chemical Death Threshold',
+                    '_description': 'Whether cells die when chemical concentration exceeds threshold',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Injury',
+                    # '_units': 'boolean',
+                    '_expert_level': 'intermediate',
+                    '_depends_on': ['SLS_Injury'],
                 },
+                # 'SLS_Threshold': {
+                #     '_default': 2.0,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_Threshold': {
                     '_default': 2.0,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Chemical Death Threshold',
+                    '_description': 'Chemical concentration level above which cells die',
+                    '_category': 'Injury Settings',
+                    '_subcategory': 'Chemical Injury',
+                    # '_units': 'relative concentration',
+                    '_biological_range': (0.5, 10.0),
+                    '_expert_level': 'intermediate',
+                    '_depends_on': ['SLS_Threshold_Method'],
                 },
 
                 # --- Function Control Parameters ---
+                # 'GrowthControl': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'GrowthControl': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Enable Cell Growth',
+                    '_description': 'Allow cells to increase in size over time',
+                    '_category': 'Simulation Control',
+                    '_subcategory': 'Biological Processes',
+                    # '_units': 'boolean',
+                    '_expert_level': 'intermediate',
+                    '_debug_parameter': True,
                 },
+                # 'MitosisControl': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'MitosisControl': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Enable Cell Division',
+                    '_description': 'Allow cells to divide and create new cells',
+                    '_category': 'Simulation Control',
+                    '_subcategory': 'Biological Processes',
+                    # '_units': 'boolean',
+                    '_expert_level': 'intermediate',
+                    '_debug_parameter': True,
                 },
+                # 'DeathControl': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'DeathControl': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Enable Cell Death',
+                    '_description': 'Allow cells to die under appropriate conditions',
+                    '_category': 'Simulation Control',
+                    '_subcategory': 'Biological Processes',
+                    # '_units': 'boolean',
+                    '_expert_level': 'intermediate',
+                    '_debug_parameter': True,
                 },
                 'DifferentiationControl': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Enable Cell Differentiation',
+                    '_description': 'Allow cells to change from one type to another',
+                    '_category': 'Simulation Control',
+                    '_subcategory': 'Biological Processes',
+                    # '_units': 'boolean',
+                    '_expert_level': 'intermediate',
+                    '_debug_parameter': True,
                 },
-
-                # --- Plot and Data Collection Parameters ---
-                'CC3D_PLOT': {
-                    '_default': False,  # Disable for headless runs
+                # 'DeathTimeScalar': {
+                #     '_default': 1,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
+                'DeathTimeScalar': {
+                    '_default': 1,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Cell Death Rate Modifier',
+                    '_description': 'Multiplier for how quickly cells die (1.0 = normal rate)',
+                    '_category': 'Simulation Control',
+                    '_subcategory': 'Biological Processes',
+                    # '_units': 'rate multiplier',
+                    '_biological_range': (0.1, 10.0),
+                    '_expert_level': 'advanced',
+                    '_depends_on': ['DeathControl'],
                 },
+                # 'DifferentiationControl': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
+                
+                # --- Plot and Data Collection Parameters ---
+                # 'CC3D_PLOT': {
+                #     '_default': False,  # Disable for headless runs
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
+                'CC3D_PLOT': {
+                    '_default': False,
+                    '_updater': 'set',
+                    '_emit': True,
+                    '_display_name': 'Real-time Visualization',
+                    '_description': 'Show live simulation progress (slower but educational)',
+                    '_category': 'Visualization',
+                    '_subcategory': 'Real-time Display',
+                    # '_units': 'boolean',
+                    '_expert_level': 'basic',
+                    '_performance_impact': 'high',
+                },
+                # 'CellCount': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'CellCount': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Track Cell Populations',
+                    '_description': 'Record how many cells of each type exist over time',
+                    '_category': 'Data Collection',
+                    '_subcategory': 'Population Tracking',
+                    # '_units': 'boolean',
+                    '_expert_level': 'basic',
+                    '_output_files': ['cell_count_*.csv'],
+                    '_biological_meaning': 'Essential for analyzing healing and regeneration',
                 },
+                # 'PressureTracker': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'PressureTracker': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Track Cell Pressure (Real-time)',
+                    '_description': 'Monitor mechanical stress experienced by cells',
+                    '_category': 'Data Collection',
+                    '_subcategory': 'Mechanical Properties',
+                    # '_units': 'boolean',
+                    '_expert_level': 'intermediate',
+                    '_biological_meaning': 'Indicates tissue tension and growth constraints',
+                    '_performance_impact': 'high',
                 },
+                # 'EGF_SeenByCell': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'EGF_SeenByCell': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Track EGF Exposure (Real-time)',
+                    '_description': 'Monitor EGF concentration experienced by each cell',
+                    '_category': 'Data Collection',
+                    '_subcategory': 'Growth Factor Tracking',
+                    # '_units': 'boolean',
+                    '_expert_level': 'intermediate',
+                    '_biological_meaning': 'Shows growth factor signaling patterns',
+                    '_performance_impact': 'high',
                 },
+                # 'SLS_SeenByCell': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SLS_SeenByCell': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Track Chemical Exposure (Real-time)',
+                    '_description': 'Monitor chemical concentration experienced by each cell',
+                    '_category': 'Data Collection',
+                    '_subcategory': 'Chemical Tracking',
+                    # '_units': 'boolean',
+                    '_expert_level': 'intermediate',
+                    '_depends_on': ['SLS_Injury'],
+                    '_biological_meaning': 'Critical for understanding chemical toxicity patterns',
+                    '_performance_impact': 'high',
                 },
+                # 'CenterBias': {
+                #     '_default': False,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'CenterBias': {
                     '_default': False,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Track Movement Guidance (Real-time)',
+                    '_description': 'Monitor guidance signals that direct cell movement',
+                    '_category': 'Data Collection',
+                    '_subcategory': 'Movement Tracking',
+                    # '_units': 'boolean',
+                    '_expert_level': 'advanced',
+                    '_biological_meaning': 'Shows how cells navigate during tissue repair',
+                    '_performance_impact': 'high',
                 },
+                # 'ThicknessPlot': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'ThicknessPlot': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Track Tissue Thickness',
+                    '_description': 'Monitor how tissue thickness changes during healing',
+                    '_category': 'Data Collection',
+                    '_subcategory': 'Tissue Metrics',
+                    # '_units': 'boolean',
+                    '_expert_level': 'basic',
+                    '_output_files': ['thickness_*.parquet'],
+                    '_biological_meaning': 'Key indicator of tissue regeneration success',
                 },
+                # 'SurfactantTracking': {
+                #     '_default': True,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SurfactantTracking': {
                     '_default': True,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Track Chemical Distribution',
+                    '_description': 'Monitor how chemicals spread throughout the tissue',
+                    '_category': 'Data Collection',
+                    '_subcategory': 'Chemical Tracking',
+                    # '_units': 'boolean',
+                    '_expert_level': 'intermediate',
+                    '_depends_on': ['SLS_Injury'],
+                    '_biological_meaning': 'Shows chemical penetration and clearance',
                 },
+                # 'SnapShot': {
+                #     '_default': False,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SnapShot': {
                     '_default': False,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Take Periodic Snapshots',
+                    '_description': 'Save images of tissue state at regular intervals',
+                    '_category': 'Data Collection',
+                    '_subcategory': 'Visual Documentation',
+                    # '_units': 'boolean',
+                    '_expert_level': 'basic',
+                    '_storage_impact': 'high',
                 },
+                # 'SnapShot_time': {
+                #     '_default': 10,
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SnapShot_time': {
                     '_default': 10,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Snapshot Frequency',
+                    '_description': 'How often to take snapshots',
+                    '_category': 'Data Collection',
+                    '_subcategory': 'Visual Documentation',
+                    # '_units': 'hours',
+                    '_conversion_factor': 10,  # MCS to hours
+                    '_biological_range': (1, 48),
+                    '_expert_level': 'basic',
+                    '_depends_on': ['SnapShot'],
                 },
 
                 # --- Simulation Time ---
+                # 'SimTime': {
+                #     '_default': 7700,  # Corrected to match vCornea default
+                #     '_updater': 'set',
+                #     '_emit': True,
+                # },
                 'SimTime': {
-                    '_default': 7700,  # Corrected to match vCornea default
+                    '_default': 7700,
                     '_updater': 'set',
                     '_emit': True,
+                    '_display_name': 'Simulation Duration',
+                    '_description': 'How long the simulation runs in biological time',
+                    '_category': 'Simulation Setup',
+                    '_subcategory': 'Duration',
+                    # '_units': 'days',
+                    '_conversion_factor': 240,  # MCS to days
+                    '_biological_range': (7, 180),  # 1 week to 6 months
+                    '_expert_level': 'basic',
+                    '_presets': {
+                        'short_term': 1680,   # 1 week
+                        'wound_healing': 7700,  # ~1 month
+                        'long_term': 21600,   # 3 months
+                    },
+                    '_biological_meaning': 'Determines observation window for healing processes',
                 },
             },
 
@@ -510,12 +1517,12 @@ class VCorneaProcess(Process):
                 'replicate_results': {
                     '_default': [],
                     '_updater': 'set',
-                    '_emit': True,
+                    '_emit': True,                   
                 },
                 'simulation_success': {
                     '_default': False,
                     '_updater': 'set',
-                    '_emit': True,
+                    '_emit': True,                    
                 },
                 'output_directory': {
                     '_default': '',
@@ -530,7 +1537,7 @@ class VCorneaProcess(Process):
                 'run_metadata': {
                     '_default': {},
                     '_updater': 'set',
-                    '_emit': True,
+                    '_emit': True,                    
                 }
             }
         }
@@ -547,7 +1554,7 @@ class VCorneaProcess(Process):
         if self.parameters.get('output_base_dir'):
             output_base = Path(self.parameters['output_base_dir'])
         else:
-            output_base = Path.cwd() / "vivarium_vcornea_outputs"
+            output_base = Path.cwd() / "simulation_results"
         
         batch_output_dir = output_base / run_name
         batch_output_dir.mkdir(parents=True, exist_ok=True)
@@ -579,16 +1586,20 @@ class VCorneaProcess(Process):
                 sim_params_file = temp_project / "Simulation" / "Parameters.py"
                 self._write_parameters_file(sim_params_file, sim_params)
 
+                temp_sim_dir = temp_project / "Simulation"
+                before_snapshot = self._take_directory_snapshot(temp_sim_dir)
+
                 # Launch the simulation and get the process handle
                 process, stdout_log, stderr_log = self._run_cc3d_simulation(temp_project, run_output_dir)
                 
                 if process:
-                    # Store the handle and related info to wait on it later
+                    # Store the handle and related info 
                     running_processes.append({
                         'process': process,
                         'replicate_id': replicate_id,
                         'output_dir': run_output_dir,
                         'temp_dir': temp_dir,
+                        'temp_project': temp_project,
                         'metadata': run_metadata,
                         'stdout_log': stdout_log,
                         'stderr_log': stderr_log,
@@ -608,198 +1619,157 @@ class VCorneaProcess(Process):
                     'output_directory': str(run_output_dir),
                     'error_message': run_metadata['error_message'], 'results': None
                 })
-        
-        # ======================================================
-        # PHASE 2: WAIT FOR PROCESSES AND COLLECT RESULTS
-        # ======================================================
-        print("\n--- Phase 2: Waiting for processes to complete and collecting results ---")
-        for job in running_processes:
-            process = job['process']
-            replicate_id = job['replicate_id']
-            run_output_dir = job['output_dir']
-            run_metadata = job['metadata']
 
-            # Wait for this specific process to finish. This is a blocking call.
-            process.wait(timeout=7200) # Optional: add a timeout
+        # ======================================================
+        # PHASE 2: CONCURRENT PROCESS MONITORING WITH FUTURES
+        # ======================================================
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        import time
+
+        def monitor_process(job):
+            """Monitor a single process until completion and return job with results."""
+            process = job['process']
             
-            # Close the log files
+            # Wait for this specific process to complete
+            exit_code = process.wait(timeout=7200)  # 2 hour timeout per process
+            
+            temp_sim_dir = job['temp_project'] / "Simulation"
+            after_snapshot = self._take_directory_snapshot(temp_sim_dir)
+
+            job['exit_code'] = exit_code
+            job['completed_at'] = time.time()
+            
+            # Close log files
             job['stdout_log'].close()
             job['stderr_log'].close()
-
-            print(f"  > Replicate {replicate_id} (PID: {process.pid}) finished with exit code {process.returncode}.")
             
-            # Check if the simulation succeeded
-            if process.returncode == 0:
-                results = self._parse_simulation_results(run_output_dir, sim_params)
-                run_metadata.update({'simulation_success': True, 'simulation_completed_at': pd.Timestamp.now().isoformat(), 'healing_time': results.get('healing_time')})
-                replicate_outputs.append({'replicate_id': replicate_id, 'success': True, 'output_directory': str(run_output_dir), 'error_message': None, 'results': results})
-            else:
-                error_message = f"Simulation process failed with exit code {process.returncode}. Check stderr.log in the output directory."
-                run_metadata.update({'simulation_success': False, 'error_message': error_message})
-                replicate_outputs.append({'replicate_id': replicate_id, 'success': False, 'output_directory': str(run_output_dir), 'error_message': error_message, 'results': None})
+            return job
 
-            # Clean up and log
-            shutil.rmtree(job['temp_dir'], ignore_errors=True)
+        print("\n--- Phase 2: Monitoring all processes concurrently ---")
+
+        # Use ThreadPoolExecutor to monitor all processes concurrently
+        with ThreadPoolExecutor(max_workers=len(running_processes)) as executor:
+            # Submit monitoring tasks for all processes
+            future_to_job = {
+                executor.submit(monitor_process, job): job 
+                for job in running_processes
+            }
+            
+            completed_jobs = []
+            
+            # Collect results as they complete
+            for future in as_completed(future_to_job):
+                job = future_to_job[future]
+                try:
+                    completed_job = future.result()
+                    completed_jobs.append(completed_job)
+                    print(f"  > Replicate {completed_job['replicate_id']} (PID: {completed_job['process'].pid}) finished with exit code {completed_job['exit_code']}")
+                except Exception as e:
+                    print(f"  > Error monitoring replicate {job['replicate_id']}: {e}")
+                    job['exit_code'] = -1  # Mark as failed
+                    job['error'] = str(e)
+                    completed_jobs.append(job)
+
+        print(f"  > All {len(completed_jobs)} processes completed")
+
+        # ======================================================
+        # PHASE 3: COLLECT RESULTS FROM ALL COMPLETED PROCESSES
+        # ======================================================
+        print("\n--- Phase 3: Collecting results from completed processes ---")
+
+        for job in completed_jobs:
+            replicate_id = job['replicate_id']
+            run_output_dir = job['output_dir']
+            temp_project = job['temp_project']
+            run_metadata = job['metadata']
+            exit_code = job['exit_code']
+            
+            print(f"  > Processing results for replicate {replicate_id}...")
+
+            # Get the before/after snapshots from the job
+            before_files = job.get('before_snapshot', set())
+            after_files = job.get('after_snapshot', set())
+            
+            # Close log files
+            job['stdout_log'].close()
+            job['stderr_log'].close()
+            
+            # Take snapshots to track generated files
+            temp_sim_dir = temp_project / "Simulation"
+            before_files = set()  # We could take this earlier, but for now just track what exists
+            after_files = self._take_directory_snapshot(temp_sim_dir)
+            
+            # Process based on exit code
+            if exit_code == 0:
+                # Success - collect files and parse results
+                print(f"    - Collecting output files...")
+                files_moved = self._collect_output_files(temp_project, run_output_dir, sim_params)
+                
+                # Get list of files that look like they were generated
+                generated_files = self._get_generated_files_list(temp_project, before_files, after_files)
+                
+                print(f"    - Parsing simulation results...")
+                results = self._parse_simulation_results(run_output_dir, sim_params)
+                
+                run_metadata.update({
+                    'simulation_success': True, 
+                    'simulation_completed_at': pd.Timestamp.now().isoformat(), 
+                    'healing_time': results.get('healing_time'),
+                    'files_collected': files_moved,
+                    'files_generated': generated_files
+                })
+                
+                replicate_outputs.append({
+                    'replicate_id': replicate_id, 
+                    'success': True, 
+                    'output_directory': str(run_output_dir), 
+                    'error_message': None, 
+                    'results': results,
+                    'files_generated': generated_files,
+                    'files_collected': files_moved
+                })
+                
+                print(f"    - Replicate {replicate_id} completed successfully")
+                
+            else:
+                # Failure - record error
+                error_message = f"Simulation process failed with exit code {exit_code}. Check stderr.log in the output directory."
+                run_metadata.update({
+                    'simulation_success': False, 
+                    'error_message': error_message
+                })
+                
+                replicate_outputs.append({
+                    'replicate_id': replicate_id, 
+                    'success': False, 
+                    'output_directory': str(run_output_dir), 
+                    'error_message': error_message, 
+                    'results': None,
+                    'files_generated': [],
+                    'files_collected': []
+                })
+                
+                print(f"    - Replicate {replicate_id} failed with exit code {exit_code}")
+            
+            # Save metadata and clean up
             with open(run_output_dir / "run_metadata.json", 'w') as f:
                 json.dump(run_metadata, f, indent=2)
             self._update_experiment_log(output_base, run_metadata)
-            if not self.parameters.get('keep_outputs', False):
-                shutil.rmtree(run_output_dir, ignore_errors=True)
-        
-        # ======================================================
-        # PHASE 3: FINALIZE AND RETURN
-        # ======================================================
-        print(f"\n--- Batch finished ---")
-        overall_success = all(rep['success'] for rep in replicate_outputs if 'success' in rep)
+            shutil.rmtree(job['temp_dir'], ignore_errors=True)
 
-        if not self.parameters.get('keep_outputs', False):
-             try:
-                 if not any(batch_output_dir.iterdir()):
-                     batch_output_dir.rmdir()
-             except OSError as e:
-                 print(f"Could not remove empty batch directory {batch_output_dir}: {e}")
+        print(f"--- Result collection completed ---")
+        overall_success = all(rep['success'] for rep in replicate_outputs if 'success' in rep)
 
         return {
             'outputs': {
-                'replicate_results': sorted(replicate_outputs, key=lambda r: r['replicate_id']), # Sort for consistency
+                'replicate_results': sorted(replicate_outputs, key=lambda r: r['replicate_id']), 
                 'simulation_success': overall_success,
                 'output_directory': str(batch_output_dir),
                 'parameter_changes': parameter_changes,
                 'run_metadata': self._create_run_metadata(sim_params, parameter_changes, run_name)
             }
         }
-    
-    # def next_update(self, timestep, states):
-    #     """Execute a complete vCornea simulation and return results."""
-
-    #     sim_params = states['inputs']
-        
-    #     num_replicates = self.parameters.get('replicates', 1)
-    #     print(f"VCorneaProcess: Starting simulation for {num_replicates} replicate(s).")
-
-    #     parameter_changes = self._identify_parameter_changes(sim_params)
-    #     run_name = self._generate_run_name(parameter_changes)
-
-    #     if self.parameters.get('output_base_dir'):
-    #         output_base = Path(self.parameters['output_base_dir'])
-    #     else:
-    #         output_base = Path.cwd() / "vivarium_vcornea_outputs"
-        
-    #     batch_output_dir = output_base / run_name
-    #     batch_output_dir.mkdir(parents=True, exist_ok=True)
-        
-    #     # ---- Initialize a list to hold detailed results for each replicate ----
-    #     replicate_outputs = []
-        
-    #     for i in range(num_replicates):
-    #         replicate_id = i + 1
-    #         print(f"\n--- Running Replicate {replicate_id}/{num_replicates} ---")
-
-    #         run_output_dir = batch_output_dir / f"replicate_{replicate_id}"
-    #         run_output_dir.mkdir(parents=True, exist_ok=True)
-
-    #         run_metadata = self._create_run_metadata(sim_params, parameter_changes, run_name)
-    #         run_metadata['replicate_id'] = replicate_id
-    #         run_metadata['total_replicates'] = num_replicates
-
-    #         metadata_file = run_output_dir / "run_metadata.json"
-    #         with open(metadata_file, 'w') as f:
-    #             json.dump(run_metadata, f, indent=2)
-
-    #         temp_dir = tempfile.mkdtemp()
-            
-    #         try:
-    #             temp_project = Path(temp_dir) / "vcornea_sim"
-    #             shutil.copytree(self.project_path, temp_project)
-                
-    #             self._redirect_outputs_in_copy(temp_project, run_output_dir)
-    #             sim_params_file = temp_project / "Simulation" / "Parameters.py"
-    #             self._write_parameters_file(sim_params_file, sim_params)
-                
-    #             success = self._run_cc3d_simulation(temp_project)
-                
-    #             if not success:
-    #                 # ---- Handle simulation failure ----
-    #                 print(f"VCorneaProcess: Replicate {replicate_id} failed.")
-    #                 run_metadata['simulation_success'] = False
-    #                 error_message = "Simulation process failed with a non-zero exit code."
-    #                 run_metadata['error_message'] = error_message
-                    
-    #                 # Append a failure report to our results list
-    #                 replicate_outputs.append({
-    #                     'replicate_id': replicate_id,
-    #                     'success': False,
-    #                     'output_directory': str(run_output_dir),
-    #                     'error_message': error_message,
-    #                     'results': None
-    #                 })
-
-    #             else:
-    #                 # ---- Handle simulation success ----
-    #                 results = self._parse_simulation_results(run_output_dir, sim_params)
-    #                 run_metadata['simulation_success'] = True
-    #                 run_metadata['simulation_completed_at'] = pd.Timestamp.now().isoformat()
-    #                 run_metadata['healing_time'] = results.get('healing_time')
-                    
-    #                 # Append a success report to our results list
-    #                 replicate_outputs.append({
-    #                     'replicate_id': replicate_id,
-    #                     'success': True,
-    #                     'output_directory': str(run_output_dir),
-    #                     'error_message': None,
-    #                     'results': results
-    #                 })
-    #                 print(f"VCorneaProcess: Replicate {replicate_id} completed. Results in: {run_output_dir}")
-
-    #             # Update metadata file and experiment log for every replicate, regardless of outcome
-    #             with open(metadata_file, 'w') as f:
-    #                 json.dump(run_metadata, f, indent=2)
-    #             self._update_experiment_log(output_base, run_metadata)
-
-    #         except Exception as e:
-    #             # ---- Handle exceptions ----
-    #             print(f"VCorneaProcess: An exception occurred during replicate {replicate_id}: {e}")
-    #             run_metadata['simulation_success'] = False
-    #             run_metadata['error_message'] = str(e)
-
-    #             # Append a failure report for the exception
-    #             replicate_outputs.append({
-    #                 'replicate_id': replicate_id,
-    #                 'success': False,
-    #                 'output_directory': str(run_output_dir),
-    #                 'error_message': str(e),
-    #                 'results': None
-    #             })
-    #             with open(metadata_file, 'w') as f:
-    #                 json.dump(run_metadata, f, indent=2)
-
-    #         finally:
-    #             shutil.rmtree(temp_dir, ignore_errors=True)
-    #             if not self.parameters.get('keep_outputs', False):
-    #                 shutil.rmtree(run_output_dir, ignore_errors=True)
-
-    #     # ---- Determine overall success and construct the final output ----
-    #     print(f"\n--- All {num_replicates} replicates finished ---")
-        
-    #     overall_success = all(rep['success'] for rep in replicate_outputs)
-
-    #     if not self.parameters.get('keep_outputs', False):
-    #          try:
-    #              if not any(batch_output_dir.iterdir()):
-    #                  batch_output_dir.rmdir()
-    #          except OSError as e:
-    #              print(f"Could not remove empty batch directory {batch_output_dir}: {e}")
-
-    #     return {
-    #         'outputs': {
-    #             'replicate_results': replicate_outputs,
-    #             'simulation_success': overall_success,
-    #             'output_directory': str(batch_output_dir),
-    #             'parameter_changes': parameter_changes,
-    #             'run_metadata': self._create_run_metadata(sim_params, parameter_changes, run_name)
-    #         }
-    #     }
-
+       
     def _identify_parameter_changes(self, sim_params):
         """Identify which parameters have been changed from their defaults."""
         parameter_changes = {}
@@ -950,12 +1920,12 @@ class VCorneaProcess(Process):
             'healing_time': run_metadata.get('healing_time', ''),
             'output_directory': run_metadata['run_name']
         }
-        
+        #TODO: Add all the parameters used in the run to the log
         # Add key parameter changes to the log
         for param, change in run_metadata.get('parameter_changes', {}).items():
-            if param in ['SLS_Concentration', 'InjuryTime', 'EGF_STEM_HalfMaxValue']:
-                log_entry[f'{param}_value'] = change['current_value']
-                log_entry[f'{param}_default'] = change['default_value']
+            # if param in ['SLS_Concentration', 'InjuryTime', 'EGF_STEM_HalfMaxValue']:
+            log_entry[f'{param}_value'] = change['current_value']
+            log_entry[f'{param}_default'] = change['default_value']
         
         # Read existing log or create new DataFrame
         if log_file.exists():
@@ -990,7 +1960,7 @@ class VCorneaProcess(Process):
         safe_path = str(external_output_dir).replace('\\', '/')
 
         # Replace the output directory line - use forward slashes
-        old_line = r'output_directory = current_script_directory\.joinpath\("Output",time.strftime("%m%d%Y_%H%M%S"))'
+        old_line = r'output_directory = current_script_directory\.joinpath\("Output",time\.strftime\("%m%d%Y_%H%M%S"\)\)'
         new_line = f'output_directory = Path(r"{safe_path}")'
         
         if old_line in content:
@@ -998,7 +1968,7 @@ class VCorneaProcess(Process):
         else:
             # If the exact line isn't found, try a more flexible approach
             import re
-            pattern = r'output_directory = current_script_directory\.joinpath\("Output".*?\)'
+            pattern = r'output_directory = current_script_directory\.joinpath\("Output".*?\)\)'
             replacement = f'output_directory = Path(r"{safe_path}")'  # Now using safe_path with forward slashes
             content = re.sub(pattern, replacement, content)
         
@@ -1011,14 +1981,23 @@ class VCorneaProcess(Process):
             f.write(content)
 
     def _write_parameters_file(self, params_file, sim_params):
-        """Write parameters to the vCornea Parameters.py file."""
+        """Write parameters to the vCornea Parameters.py file with ALL defaults."""
         params_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Get ALL default values from ports schema
+        all_defaults = {}
+        for param, schema in self.ports_schema()['inputs'].items():
+            all_defaults[param] = schema['_default']
+        
+        # Merge user parameters with defaults (user parameters override defaults)
+        final_params = {**all_defaults, **sim_params}
         
         with open(params_file, 'w') as f:
             f.write("# Parameters for vCornea simulation\n")
             f.write("# Generated by Vivarium wrapper\n\n")
             
-            for param_name, param_value in sim_params.items():
+            # Write ALL parameters, not just the changed ones
+            for param_name, param_value in final_params.items():
                 f.write(f"{param_name}={repr(param_value)}\n")
 
     def _run_cc3d_simulation(self, project_path, output_dir):
@@ -1067,46 +2046,156 @@ class VCorneaProcess(Process):
                 stdout_log.close()
             if 'stderr_log' in locals() and not stderr_log.closed:
                 stderr_log.close()
-            return None, None, None
+            return None, None, None  
+    
+    def _collect_output_files(self, temp_project, output_dir, sim_params):
+        """
+        Collect output files from the temp directory and move them to the permanent output directory.
+        This handles the fact that some files are still written to the temp script directory.
+        """
+        import glob
+        from collections import defaultdict
         
-    # def _run_cc3d_simulation(self, project_path):
-    #     """Run the CC3D simulation using the correct command."""
-    #     cc3d_file = project_path / "vCornea_v2.cc3d"
-    #     conda_env = self.parameters['conda_env_name']
+        # Define the directories to search
+        temp_simulation_dir = temp_project / "Simulation"
         
-    #     # Build command exactly as the GUI does
-    #     command = [
-    #         'conda', 'run', '-n', conda_env,
-    #         'python', '-m', 'cc3d.run_script',
-    #         '-i', str(cc3d_file)
-    #     ]
+        # Track files we've already processed to avoid duplicates
+        processed_files = set()
+        files_moved = []
+        collection_stats = defaultdict(int)
         
-    #     print(f"VCorneaProcess: Running command: {' '.join(command)}")
+        # Expected output file patterns (in order of priority)
+        sim_time = sim_params.get('SimTime', 7700)
+        file_patterns = [
+            f"cell_count_{sim_time + 1}.csv",
+            f"thickness_rep_{sim_time + 1}.parquet", 
+            f"thickness_rep_*_{sim_time + 1}.parquet",  # Catch variations
+            "surfactant_*.csv",
+            "center_bias_*.csv", 
+            "pressure_*.csv",
+            "*.png",  # Screenshots if enabled
+            "*.jpg",  # Screenshots if enabled
+        ]
         
-    #     try:
-    #         result = subprocess.run(
-    #             command,
-    #             cwd=str(project_path),
-    #             capture_output=True,
-    #             text=True,
-    #             timeout=7200  # 2 hour timeout
-    #         )
+        print(f"Searching for output files in: {temp_simulation_dir}")
+        
+        # First pass: Search with specific patterns
+        for pattern in file_patterns:
+            collection_stats[f'pattern_{pattern}'] = 0
             
-    #         if result.returncode != 0:
-    #             print(f"VCorneaProcess: CC3D failed with return code {result.returncode}")
-    #             print(f"STDOUT: {result.stdout}")
-    #             print(f"STDERR: {result.stderr}")
-    #             return False
+            # Search in main directory
+            search_paths = [
+                temp_simulation_dir / pattern,
+                temp_simulation_dir / "**" / pattern  # Recursive search
+            ]
             
-    #         return True
+            for search_path in search_paths:
+                found_files = glob.glob(str(search_path), recursive=True)
+                
+                for file_path in found_files:
+                    source_file = Path(file_path)
+                    
+                    # Skip if already processed (avoid duplicates)
+                    if source_file.resolve() in processed_files:
+                        continue
+                        
+                    if source_file.exists() and source_file.is_file():
+                        dest_file = output_dir / source_file.name
+                        
+                        # Skip if destination already exists (avoid overwrites)
+                        if dest_file.exists():
+                            print(f"Skipping {source_file.name} - destination already exists")
+                            continue
+                        
+                        try:
+                            # Copy the file to the permanent location
+                            shutil.copy2(source_file, dest_file)
+                            processed_files.add(source_file.resolve())
+                            files_moved.append(source_file.name)
+                            collection_stats[f'pattern_{pattern}'] += 1
+                            print(f"Collected output file: {source_file.name}")
+                        except Exception as e:
+                            print(f"Warning: Could not move file {source_file}: {e}")
+        
+        # Second pass: Catch any remaining output files we might have missed
+        # (but only if they weren't already processed)
+        for ext in ['*.csv', '*.parquet', '*.png', '*.jpg']:
+            collection_stats[f'catchall_{ext}'] = 0
+            found_files = glob.glob(str(temp_simulation_dir / ext))
             
-    #     except subprocess.TimeoutExpired:
-    #         print("VCorneaProcess: Simulation timed out after 2 hours")
-    #         return False
-    #     except Exception as e:
-    #         print(f"VCorneaProcess: Error running CC3D: {e}")
-    #         return False
+            for file_path in found_files:
+                source_file = Path(file_path)
+                
+                # Skip if already processed
+                if source_file.resolve() in processed_files:
+                    continue
+                    
+                # Only collect files that look like simulation outputs
+                # (avoid collecting input files or other non-output files)
+                if source_file.name.startswith(('cell_count_', 'thickness_', 'surfactant_', 
+                                            'pressure_', 'center_bias_')) or \
+                source_file.suffix in ['.png', '.jpg']:
+                    
+                    if source_file.exists() and source_file.is_file():
+                        dest_file = output_dir / source_file.name
+                        
+                        if not dest_file.exists():
+                            try:
+                                shutil.copy2(source_file, dest_file)
+                                processed_files.add(source_file.resolve())
+                                files_moved.append(source_file.name)
+                                collection_stats[f'catchall_{ext}'] += 1
+                                print(f"Collected additional output file: {source_file.name}")
+                            except Exception as e:
+                                print(f"Warning: Could not move additional file {source_file}: {e}")
+        
+        # Print collection summary
+        total_collected = len(files_moved)
+        if total_collected > 0:
+            print(f"File collection summary: {total_collected} files collected")
+            for category, count in collection_stats.items():
+                if count > 0:
+                    print(f"  {category}: {count} files")
+        else:
+            print("Warning: No output files were collected")
+        
+        return files_moved
 
+    def _get_generated_files_list(self, temp_project, before_files, after_files):
+        """
+        Determine which files were actually generated by comparing before/after snapshots.
+        This provides a more accurate list than just glob searching.
+        """
+        # Convert to sets for easier comparison
+        before_set = set(before_files)
+        after_set = set(after_files)
+        
+        # Files that were created during simulation
+        generated_files = after_set - before_set
+        
+        # Filter to only include likely output files (not temp or log files)
+        output_extensions = {'.csv', '.parquet', '.png', '.jpg', '.json'}
+        output_prefixes = {'cell_count_', 'thickness_', 'surfactant_', 'pressure_', 'center_bias_'}
+        
+        actual_outputs = []
+        for file_path in generated_files:
+            file_obj = Path(file_path)
+            if (file_obj.suffix.lower() in output_extensions and 
+                (any(file_obj.name.startswith(prefix) for prefix in output_prefixes) or
+                file_obj.suffix in {'.png', '.jpg'})):
+                actual_outputs.append(file_obj.name)
+        
+        return sorted(actual_outputs)
+
+    def _take_directory_snapshot(self, directory):
+        """Take a snapshot of all files in a directory for before/after comparison."""
+        snapshot = set()
+        if directory.exists():
+            for file_path in directory.rglob('*'):
+                if file_path.is_file():
+                    snapshot.add(str(file_path))
+        return snapshot
+    
     def _parse_simulation_results(self, output_dir, sim_params):
         """Parse the simulation output files from external output directory."""
         sim_time = sim_params.get('SimTime', 7700)

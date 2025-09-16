@@ -22,13 +22,13 @@ This folder contains scientific examples demonstrating how to use the Vivarium v
 ### 1. Basic Testing (`run_vcornea_test.py`)
 - **Purpose**: Verify wrapper installation and basic functionality
 - **Use Case**: First-time setup validation
-- **Runtime**: ~5-10 minutes
+- **Runtime**: ~40 minutes
 - **Parameters**: Minimal injury simulation
 
 ### 2. Parameter Sweeps (`parameter_sweep_example.py`)
 - **Purpose**: Systematic exploration of parameter space
 - **Use Case**: Dose-response studies, sensitivity analysis
-- **Runtime**: ~30-60 minutes (depends on parameter combinations)
+- **Runtime**: ~40-360 minutes (depends on parameter combinations)
 - **Parameters**: SLS concentration ranges, injury timing
 - **Output**: CSV files with statistical summaries
 
@@ -97,8 +97,8 @@ python batch_processing_demo.py /path/to/cc3d batch
 
 - **Memory**: 2-4 GB RAM per simulation
 - **CPU**: Single core per simulation (parallelizable)
-- **Storage**: ~10-50 MB per simulation output
-- **Time**: 30 seconds to 30 minutes per simulation (depends on SimTime)
+- **Storage**: ~10-2000 MB per simulation output
+- **Time**: 30 seconds to 40 minutes per simulation (depends on SimTime)
 
 ## Troubleshooting
 

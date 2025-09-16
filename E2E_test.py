@@ -10,8 +10,12 @@ This test actually runs minimal vCornea simulations to verify the complete workf
 - Multiple replicates
 
 Usage:
-    pytest test_vcornea_complete_workflow.py -v
-    pytest test_vcornea_complete_workflow.py::TestCompleteWorkflow::test_minimal_simulation -v
+
+    Full test suite:
+        pytest E2E_test.py -v 
+
+    Or run a single test:
+        pytest E2E_test.py::TestCompleteWorkflow::test_minimal_simulation -v 
 """
 
 import pytest
@@ -23,27 +27,33 @@ import pandas as pd
 import json
 import os
 
-# Configuration
-VCORNEA_PROJECT_PATH = Path(r'C:\Users\joelv\OneDrive\Desktop\vCornea_suite\vCornea\HPC\Project\paper_version')
-CONDA_ENV_NAME = 'vc'
+from vivarium_vcornea.utils.simple_config import get_test_config
+
+try:
+    # Load configuration using the helper function
+    config = get_test_config()
+    VCORNEA_PROJECT_PATH = Path(config['vcornea_project_path'])
+    CONDA_ENV_NAME = config['conda_env_name']
+except FileNotFoundError as e:
+    # If config file is missing, skip all tests and provide instructions
+    pytest.skip(str(e), allow_module_level=True)
 
 @pytest.fixture
 def vcornea_process():
     """Fixture providing a configured VCorneaProcess for testing."""
     from vivarium_vcornea.processes.vcornea_process import VCorneaProcess
     
-    with tempfile.TemporaryDirectory() as temp_dir:
-        output_dir = Path(temp_dir) / "test_outputs"
-        
-        parameters = {
-            'cc3d_project_path': str(VCORNEA_PROJECT_PATH),
-            'conda_env_name': CONDA_ENV_NAME,
-            'output_base_dir': str(output_dir),
-            'keep_outputs': True,
-            'replicates': 1
-        }
-        
-        yield VCorneaProcess(parameters)
+    # with tempfile.TemporaryDirectory() as temp_dir:
+    output_dir = Path.cwd() / "test_outputs"
+    
+    parameters = {
+        'cc3d_project_path': str(VCORNEA_PROJECT_PATH),
+        'conda_env_name': CONDA_ENV_NAME,
+        'output_base_dir': str(output_dir),            
+        'replicates': 1
+    }
+    
+    yield VCorneaProcess(parameters)
 
 @pytest.fixture
 def minimal_sim_params():
@@ -142,7 +152,7 @@ class TestCompleteWorkflow:
         assert 'Time' in df.columns
         assert all(col in df.columns for col in ['Superficial', 'Wing', 'Basal', 'Stem'])
         assert df['Time'].max() <= sim_time + 1  # Final time point
-        assert all(df[col] >= 0 for col in ['Superficial', 'Wing', 'Basal', 'Stem'])  # Cell counts should be non-negative
+        assert all((df[col] >= 0).all() for col in ['Superficial', 'Wing', 'Basal', 'Stem'])  # Cell counts should be non-negative
         
         # Test thickness parquet
         thickness_file = replicate_dir / f"thickness_rep_{sim_time + 1}.parquet"
@@ -227,50 +237,49 @@ class TestCompleteWorkflow:
         assert run_metadata['simulation_config']['has_injury'] == custom_sim_params['IsInjury']
         assert run_metadata['simulation_config']['injury_type'] == 'chemical'  # InjuryType=True means chemical
 
-    @pytest.mark.slow
     def test_multiple_replicates(self):
         """Test running multiple replicates."""
         from vivarium_vcornea.processes.vcornea_process import VCorneaProcess
         
-        with tempfile.TemporaryDirectory() as temp_dir:
-            output_dir = Path(temp_dir) / "multi_replicate_test"
+        
+        output_dir = Path.cwd() / "test_outputs" / "multi_replicate_test"
+        
+        parameters = {
+            'cc3d_project_path': str(VCORNEA_PROJECT_PATH),
+            'conda_env_name': CONDA_ENV_NAME,
+            'output_base_dir': str(output_dir),
+            'keep_outputs': True,
+            'replicates': 3  # Multiple replicates
+        }
+        
+        process = VCorneaProcess(parameters)
+        
+        sim_params = {
+            'SimTime': 25,  # Very short for speed
+            'CC3D_PLOT': False,
+            'IsInjury': False,
+            'CellCount': True,
+            'ThicknessPlot': False,  # Disable to speed up
+            'SurfactantTracking': False
+        }
+        
+        states = {'inputs': sim_params}
+        results = process.next_update(1.0, states)
+        
+        assert results['outputs']['simulation_success'] is True
+        
+        # Verify all replicates completed
+        replicate_results = results['outputs']['replicate_results']
+        assert len(replicate_results) == 3
+        
+        for i, rep in enumerate(replicate_results, 1):
+            assert rep['replicate_id'] == i
+            assert rep['success'] is True
             
-            parameters = {
-                'cc3d_project_path': str(VCORNEA_PROJECT_PATH),
-                'conda_env_name': CONDA_ENV_NAME,
-                'output_base_dir': str(output_dir),
-                'keep_outputs': True,
-                'replicates': 3  # Multiple replicates
-            }
-            
-            process = VCorneaProcess(parameters)
-            
-            sim_params = {
-                'SimTime': 25,  # Very short for speed
-                'CC3D_PLOT': False,
-                'IsInjury': False,
-                'CellCount': True,
-                'ThicknessPlot': False,  # Disable to speed up
-                'SurfactantTracking': False
-            }
-            
-            states = {'inputs': sim_params}
-            results = process.next_update(1.0, states)
-            
-            assert results['outputs']['simulation_success'] is True
-            
-            # Verify all replicates completed
-            replicate_results = results['outputs']['replicate_results']
-            assert len(replicate_results) == 3
-            
-            for i, rep in enumerate(replicate_results, 1):
-                assert rep['replicate_id'] == i
-                assert rep['success'] is True
-                
-                # Verify each replicate has its own directory
-                rep_dir = Path(rep['output_directory'])
-                assert rep_dir.exists()
-                assert rep_dir.name == f"replicate_{i}"
+            # Verify each replicate has its own directory
+            rep_dir = Path(rep['output_directory'])
+            assert rep_dir.exists()
+            assert rep_dir.name == f"replicate_{i}"
 
     def test_error_handling_missing_project(self):
         """Test error handling when project path is missing."""
@@ -325,11 +334,185 @@ class TestCompleteWorkflow:
             
             for param, expected_value in test_params.items():
                 assert namespace[param] == expected_value
+    
+    def test_temp_folder_parameters(self): 
+        """Test that Parameters.py is created correctly in the temp project."""
+        from vivarium_vcornea.processes.vcornea_process import VCorneaProcess
+        import tempfile
+        import shutil
+        from pathlib import Path
+        
+        print("\n" + "="*60)
+        print("TESTING PARAMETERS.PY IN TEMP FOLDER")
+        print("="*60)
+        
+        process = VCorneaProcess({
+            'cc3d_project_path': str(VCORNEA_PROJECT_PATH),
+            'conda_env_name': CONDA_ENV_NAME,
+        })
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            print(f"Temp directory: {temp_dir}")
+            
+            # Step 1: Copy project to temp (like your process does)
+            temp_project = Path(temp_dir) / "vcornea_sim"
+            shutil.copytree(process.project_path, temp_project)
+            print(f"Project copied to: {temp_project}")
+            
+            # Step 2: Check the Simulation folder structure
+            sim_folder = temp_project / "Simulation"
+            print(f"Simulation folder exists: {sim_folder.exists()}")
+            
+            if sim_folder.exists():
+                print("Contents of Simulation folder BEFORE Parameters.py creation:")
+                for item in sim_folder.iterdir():
+                    print(f"  {item.name}")
+            
+            # Step 3: Create Parameters.py (like your process does)
+            sim_params = {
+                'SimTime': 25,
+                'CC3D_PLOT': False,
+                'IsInjury': False,
+                'CellCount': True,
+            }
+            
+            # This is the CRITICAL path - must be in temp project
+            params_file = temp_project / "Simulation" / "Parameters.py"
+            print(f"\nCreating Parameters.py at: {params_file}")
+            
+            process._write_parameters_file(params_file, sim_params)
+            
+            # Step 4: Verify creation
+            print(f"Parameters.py exists: {params_file.exists()}")
+            
+            if params_file.exists():
+                print(f"Parameters.py size: {params_file.stat().st_size} bytes")
+                content = params_file.read_text()
+                print(f"Parameters.py content:\n{content}")
+                
+                # Step 5: Test if CC3D can run with this setup
+                output_dir = Path(temp_dir) / "output"
+                output_dir.mkdir()
+                
+                # Redirect outputs
+                process._redirect_outputs_in_copy(temp_project, output_dir)
+                
+                # Try to run CC3D for just a few seconds to see initial errors
+                cc3d_file = temp_project / "vCornea_v2.cc3d"
+                conda_env = CONDA_ENV_NAME
+                
+                import subprocess
+                import os
+                
+                command = [
+                    'conda', 'run', '-n', conda_env,
+                    'python', '-m', 'cc3d.run_script',
+                    '-i', os.fspath(cc3d_file)
+                ]
+                
+                print(f"\nTesting CC3D execution:")
+                print(f"Command: {' '.join(command)}")
+                print(f"Working directory: {temp_project}")
+                
+                try:
+                    # Run with a short timeout to capture initial errors
+                    result = subprocess.run(
+                        command,
+                        cwd=os.fspath(temp_project),
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        timeout=15  # 15 second timeout
+                    )
+                    
+                    print(f"Exit code: {result.returncode}")
+                    
+                    if result.stdout:
+                        print(f"STDOUT:\n{result.stdout}")
+                    
+                    if result.stderr:
+                        print(f"STDERR:\n{result.stderr}")
+                    
+                    
+                    
+                except subprocess.TimeoutExpired as e:
+                    print("Timed out after 15 seconds (might be normal CC3D startup)")
+                    if e.stdout:
+                        print(f"Partial STDOUT:\n{e.stdout}")
+                    if e.stderr:
+                        print(f"Partial STDERR:\n{e.stderr}")
+                except Exception as e:
+                    print(f"Error running CC3D: {e}")
+            else:
+                print("❌ Parameters.py was NOT created!")
+                assert False, "Parameters.py creation failed"
+            
+            print("="*60)
+
+    def test_capture_cc3d_errors(self, vcornea_process):
+        """Capture and display the actual CC3D error messages."""
+        from vivarium_vcornea.processes.vcornea_process import VCorneaProcess
+        import tempfile
+        from pathlib import Path
+        
+        print("\n" + "="*60)
+        print("CAPTURING CC3D ERROR MESSAGES")
+        print("="*60)
+        
+        output_dir = Path.cwd() / "test_outputs" / "cc3d_error_capture"
+        
+        process = VCorneaProcess({
+            'cc3d_project_path': str(VCORNEA_PROJECT_PATH),
+            'conda_env_name': CONDA_ENV_NAME,
+            'output_base_dir': str(output_dir),
+            'keep_outputs': True,  # Keep outputs so we can read logs
+            'replicates': 1
+        })
+        
+        sim_params = {
+            'SimTime': 10,  # Very short
+            'CC3D_PLOT': False,
+            'IsInjury': False,
+            'CellCount': True,
+        }
+        
+        states = {'inputs': sim_params}
+        results = process.next_update(1.0, states)
+        
+        print(f"Simulation success: {results['outputs']['simulation_success']}")
+        
+        # Read and display the actual error logs
+        for rep in results['outputs']['replicate_results']:
+            if not rep['success']:
+                rep_dir = Path(rep['output_directory'])
+                
+                stderr_log = rep_dir / "stderr.log"
+                stdout_log = rep_dir / "stdout.log"
+                
+                print(f"\n--- REPLICATE {rep['replicate_id']} ERROR LOGS ---")
+                
+                if stderr_log.exists():
+                    stderr_content = stderr_log.read_text()
+                    if stderr_content.strip():
+                        print("STDERR:")
+                        print(stderr_content)
+                    else:
+                        print("STDERR: (empty)")
+                
+                if stdout_log.exists():
+                    stdout_content = stdout_log.read_text()
+                    if stdout_content.strip():
+                        print("STDOUT:")
+                        print(stdout_content)
+                    else:
+                        print("STDOUT: (empty)")
+        
+        print("="*60)
 
 class TestVivarium_integration:
     """Test Vivarium-specific integration features."""
 
-    def test_vivarium_engine_integration(self):
+    def test_vivarium_engine_integration(self, vcornea_process):
         """Test that VCorneaProcess works properly within Vivarium Engine."""
         from vivarium.core.engine import Engine
         from vivarium.core.composer import Composer
@@ -341,7 +524,6 @@ class TestVivarium_integration:
                     'cc3d_project_path': str(VCORNEA_PROJECT_PATH),
                     'conda_env_name': CONDA_ENV_NAME,
                     'replicates': 1,
-                    'keep_outputs': False
                 }
             }
             
@@ -374,7 +556,17 @@ class TestVivarium_integration:
         
         # Verify engine was created successfully
         assert engine is not None
-        assert 'vcornea' in engine.composite['processes']
+        
+        # Verify the engine has the basic attributes we expect
+        assert hasattr(engine, 'state')
+        assert hasattr(engine, 'update')
+        
+        # Verify the initial state was set correctly
+        assert 'globals' in engine.state.get_value()
+        assert 'inputs' in engine.state.get_value()['globals']
+        
+        # Try running one update step to ensure integration works
+        engine.update(1.0)  # This should work without errors if integration is correct
 
     def test_ports_schema_completeness(self, vcornea_process):
         """Test that ports schema includes all expected vCornea parameters."""

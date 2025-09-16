@@ -1,88 +1,72 @@
+# run_vcornea_test.py
 from vivarium.core.engine import Engine
 from vivarium.core.composer import Composer
 
-# 1. Import your newly created VCorneaProcess
-#    (Adjust the path if you placed it somewhere other than processes/)
-from vivarium_template.processes.vcornea_process import VCorneaProcess
+from vivarium_vcornea.processes.vcornea_process import VCorneaProcess
+from vivarium_vcornea.utils.simple_config import create_vivarium_experiment_state, get_test_config
 
-# 2. Create a Composer class to build the simulation
-#    A Composer is a Vivarium best practice for assembling models.
+# Load a test configuration with hardcoded paths removed
+try:
+    config = get_test_config()
+except FileNotFoundError as e:
+    print(f"Skipping test: {e}")
+    exit()
+
 class VCorneaComposer(Composer):
-
-    # Set the default configuration for the composer
     defaults = {
-        'vcornea_process': {
-            'cc3d_project_path': 'C:/path/to/your/GUI_vlab/clean_paper_version',
-            
-            # --- THIS IS THE CRUCIAL ADDITION ---
-            # Provide the full, absolute path to the Python executable
-            # in the Conda environment that has CompuCell3D installed.
-            'cc3d_python_executable': 'C:/Users/YourUser/miniconda3/envs/v_cornea/python.exe' # <-- CHANGE THIS PATH
-        },
+        'vcornea_process': config
     }
-
+    
     def generate_processes(self, config):
-        """
-        This method creates an instance of your VCorneaProcess.
-        """
-        # Get the process-specific configuration
-        process_config = config['vcornea_process']
-        
-        # Create the process instance
-        vcornea_process = VCorneaProcess(process_config)
-        
-        # Return a dictionary of all processes to include in the simulation
-        return {
-            'vcornea': vcornea_process
-        }
+        return {'vcornea': VCorneaProcess(config['vcornea_process'])}
 
     def generate_topology(self, config):
-        """
-        This method defines the "wiring diagram" for the simulation.
-        It connects the ports on your process to the main data stores.
-        """
         return {
             'vcornea': {
-                'inputs': ('globals', 'inputs'),    # Connect 'inputs' port to a global store
-                'outputs': ('globals', 'outputs'),  # Connect 'outputs' port to a global store
+                'inputs': ('inputs',),
+                'outputs': ('outputs',),
             }
         }
 
-# 3. The main block to run the experiment
 if __name__ == '__main__':
-    # Create an instance of our composer
-    composer = VCorneaComposer()
-
-    # Generate the complete composite model (processes + topology)
-    vcornea_composite = composer.generate()
-
-    # Define the initial state for the simulation.
-    # This is where we set the input parameters for our test run.
-    initial_state = {
-        'globals': {
-            'inputs': {
-                'SLS_Concentration': 1500.0,  # Let's test a mild injury
-                'InjuryTime': 5000,
-            }
-        }
+    # Define minimal simulation parameters for a fast run
+    sim_params = {
+        'SimTime': 100,
+        'IsInjury': True,
+        'InjuryTime': 50,
+        'CellCount': True,
+        'CC3D_PLOT': False,
+        'replicates': 1,
     }
 
-    # 4. Create the Vivarium Engine
+    # Create the Vivarium composite and initial state
+    composer = VCorneaComposer()
+    composite = composer.generate()
+    initial_state = create_vivarium_experiment_state(sim_params)
+    
+    # Create and run the engine
     sim = Engine(
-        composite=vcornea_composite,
+        composite=composite,
         initial_state=initial_state
     )
+    
+    print("--- LAUNCHING VIVARIUM VCORNEA TEST ---")
+    sim.update(1.0)
+    print("--- TEST COMPLETE ---")
 
-    # 5. Run the simulation for one "update"
-    #    Since your process runs a full CC3D simulation in one go,
-    #    we only need to run for a single timestep.
-    print("--- LAUNCHING VIVARIUM EXPERIMENT ---")
-    sim.update(1.0) # The timestep value (1.0) is a placeholder
-    print("--- VIVARIUM EXPERIMENT COMPLETE ---")
-
-
-    # 6. Retrieve and print the final results
+    # Print a summary of the results
     output_data = sim.emitter.get_data()
-    print("\n--- SIMULATION RESULTS ---")
-    import json
-    print(json.dumps(output_data, indent=4))
+    print("\n--- SIMULATION RESULTS SUMMARY ---")
+    
+    final_output = output_data[1.0]['outputs']
+    print(f"Simulation Success: {final_output['simulation_success']}")
+    print(f"Output Directory: {final_output['output_directory']}")
+    
+    if 'replicate_results' in final_output:
+        replicate_results = final_output['replicate_results'][0]
+        if replicate_results['success']:
+            print("Replicate 1 Status: SUCCESS")
+            print(f"  Healing Time (Approx): {replicate_results['results']['healing_time']:.2f} MCS")
+        else:
+            print("Replicate 1 Status: FAILED")
+            print(f"  Error: {replicate_results['error_message']}")
