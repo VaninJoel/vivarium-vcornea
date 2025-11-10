@@ -8,7 +8,7 @@ First, set up the environment that contains CompuCell3D and the vCornea model it
 
 ```Bash
 # Create and activate the environment
-conda create --name v_cornea python=3.9
+conda create --name v_cornea python=3.12
 conda activate v_cornea
 
 # Install CC3D and other dependencies
